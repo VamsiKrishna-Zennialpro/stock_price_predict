@@ -5,8 +5,19 @@ from src.features import make_features
 from src.observability.langfuse_client import get_langfuse
 import time
 
-
 MODEL_PATH = Path(__file__).parents[1] / "models" / "price_model.pkl"
+
+FEATURE_COLUMNS = [
+    "return_1d",
+    "return_5d",
+    "return_10d",
+    "vol_change",
+    "avg_compound",
+    "pct_positive",
+    "pct_negative",
+    "article_count",
+]
+
 
 def predict_next_day(ticker="RELIANCE.NS"):
     lf = get_langfuse()
@@ -17,10 +28,9 @@ def predict_next_day(ticker="RELIANCE.NS"):
         input={"ticker": ticker},
         metadata={
             "model": "RandomForest",
-            "model_version": "price-v1"
-        }
+            "model_version": "price-v1",
+        },
     ) as trace:
-
         model = joblib.load(MODEL_PATH)
         df = make_features(ticker)
 
@@ -31,6 +41,7 @@ def predict_next_day(ticker="RELIANCE.NS"):
         proba = model.predict_proba(X)[0][1]
 
         result = {
+            "ticker": ticker,
             "prediction": "UP" if pred == 1 else "DOWN",
             "confidence": float(proba),
             "date": str(row["date"]),
@@ -41,7 +52,3 @@ def predict_next_day(ticker="RELIANCE.NS"):
         trace.metadata["latency_sec"] = time.time() - start
 
         return result
-
-
-if __name__ == "__main__":
-    print(predict_next_day("RELIANCE.NS"))
